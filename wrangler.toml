@@ -1,0 +1,16 @@
+name = "ohtujutt-rss"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Account ID and zone ID will be set via environment or CLI
+# account_id = "your-account-id"
+
+[env.production]
+name = "ohtujutt-rss"
+routes = [
+  # Add your custom domain routes here if you have one
+  # { pattern = "podcast.yourdomain.com/*", zone_name = "yourdomain.com" }
+]
+
+[env.dev]
+name = "ohtujutt-rss-dev"
