@@ -33,6 +33,13 @@ COPY --chown=nodejs:nodejs package*.json ./
 COPY --chown=nodejs:nodejs wrangler.toml ./
 COPY --chown=nodejs:nodejs src ./src
 
+# Give nodejs user ownership of /app and write permissions
+RUN chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
+USER nodejs
+
 # Expose port for wrangler dev
 EXPOSE 8787
 
