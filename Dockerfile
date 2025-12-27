@@ -47,4 +47,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Run wrangler dev on all interfaces
-CMD ["npx", "wrangler", "dev", "--ip", "0.0.0.0", "--port", "8787", "--local"]
+CMD ["npx", "wrangler", "dev", "--ip", "0.0.0.0", "--port", "8787"]
