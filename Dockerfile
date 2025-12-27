@@ -33,9 +33,6 @@ COPY --chown=nodejs:nodejs package*.json ./
 COPY --chown=nodejs:nodejs wrangler.toml ./
 COPY --chown=nodejs:nodejs src ./src
 
-# Switch to non-root user
-USER nodejs
-
 # Expose port for wrangler dev
 EXPOSE 8787
 
