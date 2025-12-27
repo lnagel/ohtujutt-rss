@@ -1,0 +1,32 @@
+# Build artifacts
+node_modules
+npm-debug.log
+.wrangler
+
+# Development files
+.env
+.env.local
+.dev.vars
+*.log
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+feed.xml
+feed-test.xml
+
+# Documentation (included in image)
+# README.md
+# LICENSE
