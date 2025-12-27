@@ -13,9 +13,9 @@ RUN npm ci && \
 # Production image
 FROM node:20-slim
 
-# Install dumb-init for proper signal handling
+# Install dumb-init and ca-certificates for HTTPS
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends dumb-init && \
+    apt-get install -y --no-install-recommends dumb-init ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
