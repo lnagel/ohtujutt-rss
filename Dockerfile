@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (omit dev dependencies)
-RUN npm ci --omit=dev && \
+# Install all dependencies (wrangler is in devDependencies but needed for runtime)
+RUN npm ci && \
     npm cache clean --force
 
 # Production image
