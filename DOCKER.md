@@ -12,6 +12,11 @@ docker build -t ohtujutt-rss .
 docker run -p 8787:8787 ohtujutt-rss
 ```
 
+With environment variables:
+```bash
+docker run -p 8080:8080 -e PORT=8080 ohtujutt-rss
+```
+
 Access the feed at: http://localhost:8787/feed.xml
 
 ## Running with Docker Compose
@@ -39,6 +44,7 @@ docker-compose down
 
 ```bash
 docker pull ghcr.io/lnagel/ohtujutt-rss:latest
+docker run -p 8787:8787 ghcr.io/lnagel/ohtujutt-rss:latest
 ```
 
 ## Health Check
@@ -64,3 +70,10 @@ Images are automatically tagged with:
 - `v1.2.3` - Semantic version tags
 - `v1.2` - Minor version
 - `v1` - Major version
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8787` | HTTP server port |
+| `NODE_ENV` | - | Set to `production` for production deployments |

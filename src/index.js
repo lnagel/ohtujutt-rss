@@ -1,7 +1,7 @@
 /**
  * Vikerraadio Õhtujutt Podcast RSS Feed
  *
- * This Cloudflare Worker fetches children's evening stories from ERR's API
+ * A simple Node.js HTTP server that fetches children's evening stories from ERR's API
  * and serves them as a valid podcast RSS feed.
  *
  * API Endpoints:
@@ -11,60 +11,65 @@
  *   Returns mainContent with media URLs, heading, scheduleStart, etc.
  */
 
+import { createServer } from 'node:http';
+
 const ERR_API_BASE = 'https://services.err.ee/api/v2';
 const SERIES_CONTENT_ID = '1038081'; // Õhtujutt series ID
 
-// Cache duration in seconds (1 hour)
-const CACHE_DURATION = 3600;
+// Cache duration in milliseconds (1 hour)
+const CACHE_DURATION_MS = 3600 * 1000;
 
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
+// In-memory cache
+let feedCache = { data: null, timestamp: 0 };
 
-    // Simple routing
-    if (url.pathname === '/feed.xml' || url.pathname === '/') {
-      return handleFeedRequest(request, ctx);
-    }
+const PORT = process.env.PORT || 8787;
 
-    return new Response('Vikerraadio Õhtujutt RSS Feed\n\nEndpoints:\n  /feed.xml - Podcast RSS feed', {
-      headers: { 'Content-Type': 'text/plain' }
-    });
+function getCachedFeed() {
+  if (feedCache.data && Date.now() - feedCache.timestamp < CACHE_DURATION_MS) {
+    return feedCache.data;
   }
-};
+  return null;
+}
 
-async function handleFeedRequest(request, ctx) {
+function setCachedFeed(data) {
+  feedCache = { data, timestamp: Date.now() };
+}
+
+async function handleRequest(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+  if (url.pathname === '/feed.xml' || url.pathname === '/') {
+    await handleFeedRequest(req, res, url);
+  } else {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Vikerraadio Õhtujutt RSS Feed\n\nEndpoints:\n  /feed.xml - Podcast RSS feed');
+  }
+}
+
+async function handleFeedRequest(req, res, url) {
   try {
     // Try to get from cache
-    const cache = caches.default;
-    let response = await cache.match(request);
+    let rss = getCachedFeed();
 
-    if (!response) {
+    if (!rss) {
       // Fetch fresh data
       const episodes = await fetchEpisodes();
-      const selfUrl = new URL(request.url);
-      selfUrl.pathname = '/feed.xml';
-      const rss = generateRSS(episodes, selfUrl.toString());
-
-      response = new Response(rss, {
-        headers: {
-          'Content-Type': 'application/xml; charset=utf-8',
-          'Cache-Control': `public, max-age=${CACHE_DURATION}`,
-        }
-      });
+      const selfUrl = new URL('/feed.xml', url.origin);
+      rss = generateRSS(episodes, selfUrl.toString());
 
       // Store in cache
-      if (ctx) {
-        ctx.waitUntil(cache.put(request, response.clone()));
-      }
+      setCachedFeed(rss);
     }
 
-    return response;
+    res.writeHead(200, {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': `public, max-age=${CACHE_DURATION_MS / 1000}`,
+    });
+    res.end(rss);
   } catch (error) {
     console.error('Error generating feed:', error);
-    return new Response(`Error generating feed: ${error.message}`, {
-      status: 500,
-      headers: { 'Content-Type': 'text/plain' }
-    });
+    res.writeHead(500, { 'Content-Type': 'text/plain' });
+    res.end(`Error generating feed: ${error.message}`);
   }
 }
 
@@ -241,4 +246,31 @@ function escapeXml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+// Export functions for testing
+export { parseEpisode, generateRSS, fetchEpisodes, stripHtml, escapeXml };
+
+// Only start server if run directly (not imported for tests)
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
+  const server = createServer(handleRequest);
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log('\nShutting down gracefully...');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
+  server.listen(PORT, () => {
+    console.log(`Listening on port ${PORT}`);
+    console.log(`Feed endpoint: /feed.xml`);
+  });
 }
