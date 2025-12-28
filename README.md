@@ -125,7 +125,8 @@ http://your-server:8787/feed.xml
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8787` | HTTP server port |
+| `LISTEN_PORT` | `8787` | HTTP server port |
+| `CACHE_DURATION_SECONDS` | `3600` | Feed cache duration in seconds |
 | `NODE_ENV` | - | Environment mode |
 
 ## Limitations & Notes

@@ -7,7 +7,7 @@ services:
       - "8787:8787"
     environment:
       - NODE_ENV=production
-      - PORT=8787
+      - LISTEN_PORT=8787
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8787/').then(r => process.exit(r.ok ? 0 : 1))"]
       interval: 30s

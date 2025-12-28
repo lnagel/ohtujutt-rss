@@ -16,13 +16,13 @@ import { createServer } from 'node:http';
 const ERR_API_BASE = 'https://services.err.ee/api/v2';
 const SERIES_CONTENT_ID = '1038081'; // Õhtujutt series ID
 
-// Cache duration in milliseconds (1 hour)
-const CACHE_DURATION_MS = 3600 * 1000;
+// Cache duration in milliseconds (default: 1 hour)
+const CACHE_DURATION_MS = (parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600) * 1000;
 
 // In-memory cache
 let feedCache = { data: null, timestamp: 0 };
 
-const PORT = process.env.PORT || 8787;
+const PORT = process.env.LISTEN_PORT || 8787;
 
 function getCachedFeed() {
   if (feedCache.data && Date.now() - feedCache.timestamp < CACHE_DURATION_MS) {

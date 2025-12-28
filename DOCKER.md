@@ -75,5 +75,6 @@ Images are automatically tagged with:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8787` | HTTP server port |
+| `LISTEN_PORT` | `8787` | HTTP server port |
+| `CACHE_DURATION_SECONDS` | `3600` | Feed cache duration in seconds |
 | `NODE_ENV` | - | Set to `production` for production deployments |
