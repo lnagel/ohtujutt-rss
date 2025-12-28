@@ -13,8 +13,8 @@
 
 import { createServer } from 'node:http';
 
-const ERR_API_BASE = 'https://services.err.ee/api/v2';
-const SERIES_CONTENT_ID = '1038081'; // Õhtujutt series ID
+const ERR_API_URL = process.env.ERR_API_URL || 'https://services.err.ee/api/v2';
+const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
 
 // Cache duration in milliseconds (default: 1 hour)
 const CACHE_DURATION_MS = (parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600) * 1000;
@@ -77,7 +77,7 @@ async function handleFeedRequest(req, res, url) {
 
 async function fetchEpisodes() {
   // Fetch series data to get list of episodes
-  const seriesUrl = `${ERR_API_BASE}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
+  const seriesUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
 
   try {
     const response = await fetch(seriesUrl);
@@ -107,7 +107,7 @@ async function fetchEpisodes() {
 
     const episodePromises = recentIds.map(async (id) => {
       try {
-        const contentUrl = `${ERR_API_BASE}/vodContent/getContentPageData?contentId=${id}`;
+        const contentUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${id}`;
         const contentResponse = await fetch(contentUrl);
 
         if (!contentResponse.ok) {

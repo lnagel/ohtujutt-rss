@@ -123,11 +123,13 @@ http://your-server:8787/feed.xml
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LISTEN_PORT` | `8787` | HTTP server port |
-| `CACHE_DURATION_SECONDS` | `3600` | Feed cache duration in seconds |
-| `NODE_ENV` | - | Environment mode |
+| Variable                 | Default                          | Description                       |
+|--------------------------|----------------------------------|-----------------------------------|
+| `LISTEN_PORT`            | `8787`                           | HTTP server port                  |
+| `CACHE_DURATION_SECONDS` | `3600`                           | Feed cache duration in seconds    |
+| `ERR_API_URL`            | `https://services.err.ee/api/v2` | ERR API base URL                  |
+| `SERIES_CONTENT_ID`      | `1038081`                        | Content ID for the podcast series |
+| `NODE_ENV`               | -                                | Environment mode                  |
 
 ## Limitations & Notes
 

@@ -77,4 +77,6 @@ Images are automatically tagged with:
 |----------|---------|-------------|
 | `LISTEN_PORT` | `8787` | HTTP server port |
 | `CACHE_DURATION_SECONDS` | `3600` | Feed cache duration in seconds |
+| `ERR_API_URL` | `https://services.err.ee/api/v2` | ERR API base URL |
+| `SERIES_CONTENT_ID` | `1038081` | Content ID for the podcast series |
 | `NODE_ENV` | - | Set to `production` for production deployments |
