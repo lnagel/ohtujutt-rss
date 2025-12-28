@@ -36,7 +36,9 @@ function setCachedFeed(data) {
 }
 
 async function handleRequest(req, res) {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  // Use Host header if present, otherwise derive from socket address
+  const host = req.headers.host || `${req.socket.localAddress}:${req.socket.localPort}`;
+  const url = new URL(req.url, `http://${host}`);
 
   if (url.pathname === '/feed.xml' || url.pathname === '/') {
     await handleFeedRequest(req, res, url);
