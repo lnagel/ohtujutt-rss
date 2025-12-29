@@ -16,11 +16,13 @@ import { createServer } from 'node:http';
 const ERR_API_URL = process.env.ERR_API_URL || 'https://services.err.ee/api/v2';
 const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
 
-// Cache duration in milliseconds (default: 1 hour)
-const CACHE_DURATION_MS = (parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600) * 1000;
+// Cache duration in milliseconds (default: 1 hour, min: 60s, max: 24h)
+const rawCacheDuration = parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600;
+const CACHE_DURATION_MS = Math.max(60, Math.min(86400, rawCacheDuration)) * 1000;
 
-// Request timeout for upstream API calls (default: 10 seconds)
-const FETCH_TIMEOUT_MS = (parseInt(process.env.FETCH_TIMEOUT_SECONDS, 10) || 10) * 1000;
+// Request timeout for upstream API calls (default: 10s, min: 1s, max: 30s)
+const rawFetchTimeout = parseInt(process.env.FETCH_TIMEOUT_SECONDS, 10) || 10;
+const FETCH_TIMEOUT_MS = Math.max(1, Math.min(30, rawFetchTimeout)) * 1000;
 
 async function fetchWithTimeout(url) {
   const controller = new AbortController();
