@@ -38,6 +38,14 @@ let feedCache = { data: null, timestamp: 0 };
 
 const PORT = process.env.LISTEN_PORT || 8787;
 
+// Security headers for all responses
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': "default-src 'none'",
+};
+
 function getCachedFeed() {
   if (feedCache.data && Date.now() - feedCache.timestamp < CACHE_DURATION_MS) {
     return feedCache.data;
@@ -58,10 +66,10 @@ async function handleRequest(req, res) {
   if (url.pathname === '/feed.xml' || url.pathname === '/') {
     await handleFeedRequest(req, res, url);
   } else if (url.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('OK');
   } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('Not Found');
   }
 }
@@ -82,13 +90,14 @@ async function handleFeedRequest(req, res, url) {
     }
 
     res.writeHead(200, {
+      ...SECURITY_HEADERS,
       'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': `public, max-age=${CACHE_DURATION_MS / 1000}`,
     });
     res.end(rss);
   } catch (error) {
     console.error('Error generating feed:', error);
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
+    res.writeHead(500, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('Internal Server Error');
   }
 }
