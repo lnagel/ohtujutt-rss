@@ -47,8 +47,8 @@ async function handleRequest(req, res) {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('OK');
   } else {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Vikerraadio Õhtujutt RSS Feed\n\nEndpoints:\n  /feed.xml - Podcast RSS feed\n  /health - Health check');
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
   }
 }
 
