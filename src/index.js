@@ -16,13 +16,37 @@ import { createServer } from 'node:http';
 const ERR_API_URL = process.env.ERR_API_URL || 'https://services.err.ee/api/v2';
 const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
 
-// Cache duration in milliseconds (default: 1 hour)
-const CACHE_DURATION_MS = (parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600) * 1000;
+// Cache duration in milliseconds (default: 1 hour, min: 60s, max: 24h)
+const rawCacheDuration = parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600;
+const CACHE_DURATION_MS = Math.max(60, Math.min(86400, rawCacheDuration)) * 1000;
+
+// Request timeout for upstream API calls (default: 10s, min: 1s, max: 30s)
+const rawFetchTimeout = parseInt(process.env.FETCH_TIMEOUT_SECONDS, 10) || 10;
+const FETCH_TIMEOUT_MS = Math.max(1, Math.min(30, rawFetchTimeout)) * 1000;
+
+async function fetchWithTimeout(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 // In-memory cache
 let feedCache = { data: null, timestamp: 0 };
 
 const PORT = process.env.LISTEN_PORT || 8787;
+
+// Security headers for all responses
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': "default-src 'none'",
+};
 
 function getCachedFeed() {
   if (feedCache.data && Date.now() - feedCache.timestamp < CACHE_DURATION_MS) {
@@ -44,10 +68,10 @@ async function handleRequest(req, res) {
   if (url.pathname === '/feed.xml' || url.pathname === '/') {
     await handleFeedRequest(req, res, url);
   } else if (url.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('OK');
   } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.writeHead(404, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('Not Found');
   }
 }
@@ -68,14 +92,15 @@ async function handleFeedRequest(req, res, url) {
     }
 
     res.writeHead(200, {
+      ...SECURITY_HEADERS,
       'Content-Type': 'application/xml; charset=utf-8',
       'Cache-Control': `public, max-age=${CACHE_DURATION_MS / 1000}`,
     });
     res.end(rss);
   } catch (error) {
     console.error('Error generating feed:', error);
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end(`Error generating feed: ${error.message}`);
+    res.writeHead(500, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
+    res.end('Internal Server Error');
   }
 }
 
@@ -84,7 +109,7 @@ async function fetchEpisodes() {
   const seriesUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
 
   try {
-    const response = await fetch(seriesUrl);
+    const response = await fetchWithTimeout(seriesUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch series: ${response.status}`);
     }
@@ -112,7 +137,7 @@ async function fetchEpisodes() {
     const episodePromises = recentIds.map(async (id) => {
       try {
         const contentUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${id}`;
-        const contentResponse = await fetch(contentUrl);
+        const contentResponse = await fetchWithTimeout(contentUrl);
 
         if (!contentResponse.ok) {
           console.error(`Failed to fetch content ${id}`);
