@@ -12,30 +12,18 @@
  */
 
 import { createServer } from 'node:http';
+import { fetchWithRetry, getConfig as getHttpConfig } from './http-client.js';
+import { getCached, setCache, getCachedBatch, getCacheStats } from './response-cache.js';
 
 const ERR_API_URL = process.env.ERR_API_URL || 'https://services.err.ee/api/v2';
 const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
-
-// Cache duration in milliseconds (default: 1 hour, min: 60s, max: 24h)
-const rawCacheDuration = parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600;
-const CACHE_DURATION_MS = Math.max(60, Math.min(86400, rawCacheDuration)) * 1000;
 
 // Request timeout for upstream API calls (default: 10s, min: 1s, max: 30s)
 const rawFetchTimeout = parseInt(process.env.FETCH_TIMEOUT_SECONDS, 10) || 10;
 const FETCH_TIMEOUT_MS = Math.max(1, Math.min(30, rawFetchTimeout)) * 1000;
 
-async function fetchWithTimeout(url) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    return response;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-// In-memory cache
+// Short-lived feed cache to prevent regeneration on rapid requests (30 seconds)
+const FEED_CACHE_MS = 30000;
 let feedCache = { data: null, timestamp: 0 };
 
 const PORT = process.env.LISTEN_PORT || 8787;
@@ -49,7 +37,7 @@ const SECURITY_HEADERS = {
 };
 
 function getCachedFeed() {
-  if (feedCache.data && Date.now() - feedCache.timestamp < CACHE_DURATION_MS) {
+  if (feedCache.data && Date.now() - feedCache.timestamp < FEED_CACHE_MS) {
     return feedCache.data;
   }
   return null;
@@ -91,10 +79,11 @@ async function handleFeedRequest(req, res, url) {
       setCachedFeed(rss);
     }
 
+    const cacheStats = getCacheStats();
     res.writeHead(200, {
       ...SECURITY_HEADERS,
       'Content-Type': 'application/xml; charset=utf-8',
-      'Cache-Control': `public, max-age=${CACHE_DURATION_MS / 1000}`,
+      'Cache-Control': `public, max-age=${cacheStats.ttlMs / 1000}`,
     });
     res.end(rss);
   } catch (error) {
@@ -105,60 +94,88 @@ async function handleFeedRequest(req, res, url) {
 }
 
 async function fetchEpisodes() {
-  // Fetch series data to get list of episodes
-  const seriesUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
+  const seriesCacheKey = `series:${SERIES_CONTENT_ID}`;
 
-  try {
-    const response = await fetchWithTimeout(seriesUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch series: ${response.status}`);
+  // Try to get series data from cache first
+  let seriesData = getCached(seriesCacheKey);
+
+  if (!seriesData) {
+    const seriesUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
+    try {
+      const response = await fetchWithRetry(seriesUrl, FETCH_TIMEOUT_MS);
+      seriesData = await response.json();
+      setCache(seriesCacheKey, seriesData);
+    } catch (error) {
+      console.error(`Failed to fetch series data: ${error.message}`);
+      return [];
     }
-
-    const data = await response.json();
-
-    // Extract episode IDs from seasonList (organized by year > month > contents)
-    const seasonList = data.data?.seasonList?.items || [];
-    const episodeIds = [];
-
-    // Flatten the nested structure to get episode IDs
-    for (const year of seasonList) {
-      for (const month of year.items || []) {
-        for (const content of month.contents || []) {
-          if (content.id) {
-            episodeIds.push(content.id);
-          }
-        }
-      }
-    }
-
-    // Limit to 50 most recent episodes and fetch their full data
-    const recentIds = episodeIds.slice(0, 50);
-
-    const episodePromises = recentIds.map(async (id) => {
-      try {
-        const contentUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${id}`;
-        const contentResponse = await fetchWithTimeout(contentUrl);
-
-        if (!contentResponse.ok) {
-          console.error(`Failed to fetch content ${id}`);
-          return null;
-        }
-
-        const contentData = await contentResponse.json();
-        return parseEpisode(contentData.data?.mainContent);
-      } catch (error) {
-        console.error(`Error fetching episode ${id}:`, error);
-        return null;
-      }
-    });
-
-    const episodes = await Promise.all(episodePromises);
-    return episodes.filter(ep => ep !== null);
-  } catch (error) {
-    console.error('Error in fetchEpisodes:', error);
-    // Return empty array if we can't fetch
-    return [];
   }
+
+  // Extract episode IDs from seasonList (organized by year > month > contents)
+  const seasonList = seriesData.data?.seasonList?.items || [];
+  const episodeIds = [];
+
+  // Flatten the nested structure to get episode IDs
+  for (const year of seasonList) {
+    for (const month of year.items || []) {
+      for (const content of month.contents || []) {
+        if (content.id) {
+          episodeIds.push(content.id);
+        }
+      }
+    }
+  }
+
+  // Limit to 50 most recent episodes
+  const recentIds = episodeIds.slice(0, 50);
+
+  // Check which episodes are already cached
+  const episodeCacheKeys = recentIds.map(id => `episode:${id}`);
+  const cachedEpisodes = getCachedBatch(episodeCacheKeys);
+  const uncachedIds = recentIds.filter(id => !cachedEpisodes.has(`episode:${id}`));
+
+  const cacheStats = getCacheStats();
+  console.log(
+    `Episodes: ${cachedEpisodes.size} cached, ${uncachedIds.length} to fetch ` +
+    `(cache: ${cacheStats.size}/${cacheStats.maxSize})`
+  );
+
+  // Fetch uncached episodes (concurrency-limited with retries)
+  const fetchResults = await Promise.all(
+    uncachedIds.map(async (id) => {
+      const contentUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${id}`;
+      try {
+        const response = await fetchWithRetry(contentUrl, FETCH_TIMEOUT_MS);
+        const contentData = await response.json();
+        setCache(`episode:${id}`, contentData);
+        return { id, data: contentData };
+      } catch (error) {
+        console.error(`Failed to fetch episode ${id}: ${error.message}`);
+        return { id, data: null };
+      }
+    })
+  );
+
+  // Build a map of freshly fetched episodes for quick lookup
+  const fetchedMap = new Map(
+    fetchResults
+      .filter(r => r.data !== null)
+      .map(r => [`episode:${r.id}`, r.data])
+  );
+
+  // Combine cached and freshly fetched episodes, preserving order
+  const episodes = recentIds
+    .map(id => {
+      const cacheKey = `episode:${id}`;
+      const episodeData = cachedEpisodes.get(cacheKey) || fetchedMap.get(cacheKey);
+      if (episodeData) {
+        return parseEpisode(episodeData.data?.mainContent);
+      }
+      return null;
+    })
+    .filter(ep => ep !== null);
+
+  return episodes;
 }
 
 function parseEpisode(data) {
@@ -282,6 +299,9 @@ function escapeXml(str) {
 // Export functions for testing
 export { parseEpisode, generateRSS, fetchEpisodes, stripHtml, escapeXml };
 
+// Re-export cache utilities for testing
+export { clearCache } from './response-cache.js';
+
 // Only start server if run directly (not imported for tests)
 const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 
@@ -301,7 +321,13 @@ if (isMainModule) {
   process.on('SIGINT', shutdown);
 
   server.listen(PORT, () => {
+    const httpConfig = getHttpConfig();
+    const cacheStats = getCacheStats();
     console.log(`Listening on port ${PORT}`);
     console.log(`Feed endpoint: /feed.xml`);
+    console.log(
+      `Config: ${httpConfig.maxConcurrent} concurrent, ${httpConfig.maxRetries} retries, ` +
+      `${cacheStats.ttlMs / 1000}s cache TTL`
+    );
   });
 }
