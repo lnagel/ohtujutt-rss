@@ -27,7 +27,7 @@ EXPOSE 8787
 
 # Health check using native fetch
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "fetch('http://localhost:8787/').then(r => process.exit(r.ok ? 0 : 1))"
+    CMD node -e "fetch('http://localhost:8787/health').then(r => process.exit(r.ok ? 0 : 1))"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

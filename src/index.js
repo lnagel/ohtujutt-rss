@@ -43,9 +43,12 @@ async function handleRequest(req, res) {
 
   if (url.pathname === '/feed.xml' || url.pathname === '/') {
     await handleFeedRequest(req, res, url);
+  } else if (url.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
   } else {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Vikerraadio Õhtujutt RSS Feed\n\nEndpoints:\n  /feed.xml - Podcast RSS feed');
+    res.end('Vikerraadio Õhtujutt RSS Feed\n\nEndpoints:\n  /feed.xml - Podcast RSS feed\n  /health - Health check');
   }
 }
 
