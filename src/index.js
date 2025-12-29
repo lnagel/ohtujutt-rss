@@ -19,6 +19,20 @@ const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
 // Cache duration in milliseconds (default: 1 hour)
 const CACHE_DURATION_MS = (parseInt(process.env.CACHE_DURATION_SECONDS, 10) || 3600) * 1000;
 
+// Request timeout for upstream API calls (default: 10 seconds)
+const FETCH_TIMEOUT_MS = (parseInt(process.env.FETCH_TIMEOUT_SECONDS, 10) || 10) * 1000;
+
+async function fetchWithTimeout(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // In-memory cache
 let feedCache = { data: null, timestamp: 0 };
 
@@ -84,7 +98,7 @@ async function fetchEpisodes() {
   const seriesUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
 
   try {
-    const response = await fetch(seriesUrl);
+    const response = await fetchWithTimeout(seriesUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch series: ${response.status}`);
     }
@@ -112,7 +126,7 @@ async function fetchEpisodes() {
     const episodePromises = recentIds.map(async (id) => {
       try {
         const contentUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${id}`;
-        const contentResponse = await fetch(contentUrl);
+        const contentResponse = await fetchWithTimeout(contentUrl);
 
         if (!contentResponse.ok) {
           console.error(`Failed to fetch content ${id}`);
