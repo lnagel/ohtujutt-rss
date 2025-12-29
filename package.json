@@ -21,5 +21,9 @@
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "lru-cache": "^11.0.0",
+    "p-limit": "^6.1.0"
   }
 }

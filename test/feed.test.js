@@ -4,16 +4,21 @@
  * Uses Node.js built-in test runner and mock data from test/mocks/
  */
 
-import { describe, it, mock, beforeEach, afterEach } from 'node:test';
+import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { parseEpisode, generateRSS, stripHtml, escapeXml } from '../src/index.js';
+import { parseEpisode, generateRSS, stripHtml, escapeXml, clearCache } from '../src/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MOCKS_DIR = join(__dirname, 'mocks');
+
+// Clear cache before each test suite to ensure isolation
+beforeEach(() => {
+  clearCache();
+});
 
 // Load mock data
 async function loadMockData(filename) {
