@@ -1,0 +1,25 @@
+{
+  "name": "ohtujutt-rss",
+  "version": "2.0.0",
+  "description": "Podcast RSS feed for Vikerraadio Õhtujutt (Estonian children's evening stories)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "podcast",
+    "rss",
+    "vikerraadio",
+    "estonian",
+    "children",
+    "stories"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

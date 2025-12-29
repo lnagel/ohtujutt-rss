@@ -1,0 +1,11 @@
+services:
+  ohtujutt-rss:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=production
+      - LISTEN_PORT=8787
+    restart: unless-stopped
