@@ -75,7 +75,7 @@ async function handleFeedRequest(req, res, url) {
   } catch (error) {
     console.error('Error generating feed:', error);
     res.writeHead(500, { 'Content-Type': 'text/plain' });
-    res.end(`Error generating feed: ${error.message}`);
+    res.end('Internal Server Error');
   }
 }
 
