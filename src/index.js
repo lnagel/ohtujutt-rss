@@ -191,9 +191,14 @@ function parseEpisode(data) {
 
   if (!audioUrl) return null;
 
-  // Add https: protocol if URL starts with //
+  // Normalize protocol-relative URLs
   if (audioUrl.startsWith('//')) {
     audioUrl = 'https:' + audioUrl;
+  }
+
+  // Security: Only allow http:// and https:// protocols
+  if (!audioUrl.startsWith('https://') && !audioUrl.startsWith('http://')) {
+    return null;
   }
 
   // Extract metadata

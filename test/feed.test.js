@@ -137,6 +137,35 @@ describe('parseEpisode', () => {
     const episode = parseEpisode(data);
     assert.strictEqual(episode.audioUrl, 'https://example.com/audio.m3u8');
   });
+
+  it('should reject URLs with dangerous protocols', () => {
+    const dangerousProtocols = [
+      'javascript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'file:///etc/passwd',
+      'ftp://example.com/audio.mp3',
+    ];
+
+    for (const url of dangerousProtocols) {
+      const data = {
+        id: 123,
+        heading: 'Test',
+        medias: [{ src: { file: url }, duration: 300 }]
+      };
+      const episode = parseEpisode(data);
+      assert.strictEqual(episode, null, `Should reject ${url}`);
+    }
+  });
+
+  it('should accept valid http:// URLs', () => {
+    const data = {
+      id: 123,
+      heading: 'Test',
+      medias: [{ src: { file: 'http://example.com/audio.mp3' }, duration: 300 }]
+    };
+    const episode = parseEpisode(data);
+    assert.strictEqual(episode.audioUrl, 'http://example.com/audio.mp3');
+  });
 });
 
 describe('generateRSS', () => {
