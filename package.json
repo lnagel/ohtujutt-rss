@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "fetch-mock": "node scripts/fetch-mock.js",
+    "test-feed": "node scripts/test-feed.js"
   },
   "keywords": [
     "podcast",

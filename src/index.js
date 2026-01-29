@@ -5,17 +5,17 @@
  * and serves them as a valid podcast RSS feed.
  *
  * API Endpoints:
- * - Series list: https://services.err.ee/api/v2/vodContent/getContentPageData?contentId=1038081
- *   Returns seasonList.items with episodes organized by year > month > contents
- * - Episode data: https://services.err.ee/api/v2/vodContent/getContentPageData?contentId={episodeId}
- *   Returns mainContent with media URLs, heading, scheduleStart, etc.
+ * - Broadcasts list: https://vikerraadio.err.ee/api/broadcast/broadcasts?seriesContentId=1038081
+ *   Returns paginated list of episodes with basic metadata
+ * - Episode data: https://vikerraadio.err.ee/api/radio/getRadioPageData?contentId={episodeId}
+ *   Returns pageControlData.mainContent with media URLs, heading, scheduleStart, etc.
  */
 
 import { createServer } from 'node:http';
 import { fetchWithRetry, getConfig as getHttpConfig } from './http-client.js';
 import { getCached, setCache, getCachedBatch, getCacheStats } from './response-cache.js';
 
-const ERR_API_URL = process.env.ERR_API_URL || 'https://services.err.ee/api/v2';
+const VIKERRAADIO_API_URL = process.env.VIKERRAADIO_API_URL || 'https://vikerraadio.err.ee/api';
 const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
 
 // Request timeout for upstream API calls (default: 10s, min: 1s, max: 30s)
@@ -94,37 +94,27 @@ async function handleFeedRequest(req, res, url) {
 }
 
 async function fetchEpisodes() {
-  const seriesCacheKey = `series:${SERIES_CONTENT_ID}`;
+  const broadcastsCacheKey = `broadcasts:${SERIES_CONTENT_ID}`;
 
-  // Try to get series data from cache first
-  let seriesData = getCached(seriesCacheKey);
+  // Try to get broadcasts list from cache first
+  let broadcastsData = getCached(broadcastsCacheKey);
 
-  if (!seriesData) {
-    const seriesUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${SERIES_CONTENT_ID}`;
+  if (!broadcastsData) {
+    const broadcastsUrl = `${VIKERRAADIO_API_URL}/broadcast/broadcasts?seriesContentId=${SERIES_CONTENT_ID}`;
     try {
-      const response = await fetchWithRetry(seriesUrl, FETCH_TIMEOUT_MS);
-      seriesData = await response.json();
-      setCache(seriesCacheKey, seriesData);
+      const response = await fetchWithRetry(broadcastsUrl, FETCH_TIMEOUT_MS);
+      broadcastsData = await response.json();
+      setCache(broadcastsCacheKey, broadcastsData);
     } catch (error) {
-      console.error(`Failed to fetch series data: ${error.message}`);
+      console.error(`Failed to fetch broadcasts: ${error.message}`);
       return [];
     }
   }
 
-  // Extract episode IDs from seasonList (organized by year > month > contents)
-  const seasonList = seriesData.data?.seasonList?.items || [];
-  const episodeIds = [];
-
-  // Flatten the nested structure to get episode IDs
-  for (const year of seasonList) {
-    for (const month of year.items || []) {
-      for (const content of month.contents || []) {
-        if (content.id) {
-          episodeIds.push(content.id);
-        }
-      }
-    }
-  }
+  // Extract episode IDs from broadcasts list
+  const episodeIds = (broadcastsData.data || [])
+    .map(broadcast => broadcast.id)
+    .filter(id => id != null);
 
   // Limit to 50 most recent episodes
   const recentIds = episodeIds.slice(0, 50);
@@ -143,7 +133,7 @@ async function fetchEpisodes() {
   // Fetch uncached episodes (concurrency-limited with retries)
   const fetchResults = await Promise.all(
     uncachedIds.map(async (id) => {
-      const contentUrl = `${ERR_API_URL}/vodContent/getContentPageData?contentId=${id}`;
+      const contentUrl = `${VIKERRAADIO_API_URL}/radio/getRadioPageData?contentId=${id}`;
       try {
         const response = await fetchWithRetry(contentUrl, FETCH_TIMEOUT_MS);
         const contentData = await response.json();
@@ -169,7 +159,7 @@ async function fetchEpisodes() {
       const cacheKey = `episode:${id}`;
       const episodeData = cachedEpisodes.get(cacheKey) || fetchedMap.get(cacheKey);
       if (episodeData) {
-        return parseEpisode(episodeData.data?.mainContent);
+        return parseEpisode(episodeData.pageControlData?.mainContent);
       }
       return null;
     })

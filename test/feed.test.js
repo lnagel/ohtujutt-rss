@@ -78,16 +78,16 @@ describe('escapeXml', () => {
 
 describe('parseEpisode', () => {
   it('should parse episode data from mock file', async () => {
-    const data = await loadMockData('getContentPageData-1609884386.json');
-    const episode = parseEpisode(data.data.mainContent);
+    const data = await loadMockData('getRadioPageData-1609912691.json');
+    const episode = parseEpisode(data.pageControlData.mainContent);
 
     assert.ok(episode, 'Episode should not be null');
-    assert.strictEqual(episode.id, 1609884386);
-    assert.strictEqual(episode.title, 'Õhtujutt. Lumememm');
+    assert.strictEqual(episode.id, 1609912691);
+    assert.strictEqual(episode.title, 'Õhtujutt. Piia uurib kelgumäge');
     assert.ok(episode.audioUrl, 'Should have audio URL');
     assert.ok(episode.audioUrl.startsWith('https://'), 'Audio URL should be HTTPS');
     assert.ok(episode.pubDate instanceof Date, 'pubDate should be a Date');
-    assert.strictEqual(episode.link, 'https://vikerraadio.err.ee/1609884386');
+    assert.strictEqual(episode.link, 'https://vikerraadio.err.ee/1609912691');
   });
 
   it('should return null for null input', () => {
@@ -255,15 +255,15 @@ describe('generateRSS', () => {
 describe('Integration: Parse mock episodes and generate RSS', async () => {
   it('should parse all mock episode files successfully', async () => {
     const episodeFiles = [
-      'getContentPageData-1609884386.json',
-      'getContentPageData-1609884872.json',
-      'getContentPageData-1609885307.json'
+      'getRadioPageData-1609912691.json',
+      'getRadioPageData-1609911125.json',
+      'getRadioPageData-1609910012.json'
     ];
 
     const episodes = [];
     for (const file of episodeFiles) {
       const data = await loadMockData(file);
-      const episode = parseEpisode(data.data.mainContent);
+      const episode = parseEpisode(data.pageControlData.mainContent);
       if (episode) {
         episodes.push(episode);
       }
@@ -280,15 +280,15 @@ describe('Integration: Parse mock episodes and generate RSS', async () => {
 
   it('should generate valid RSS from parsed mock episodes', async () => {
     const episodeFiles = [
-      'getContentPageData-1609884386.json',
-      'getContentPageData-1609884872.json',
-      'getContentPageData-1609885307.json'
+      'getRadioPageData-1609912691.json',
+      'getRadioPageData-1609911125.json',
+      'getRadioPageData-1609910012.json'
     ];
 
     const episodes = [];
     for (const file of episodeFiles) {
       const data = await loadMockData(file);
-      const episode = parseEpisode(data.data.mainContent);
+      const episode = parseEpisode(data.pageControlData.mainContent);
       if (episode) {
         episodes.push(episode);
       }
