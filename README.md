@@ -8,34 +8,28 @@ A simple Node.js server that generates a podcast RSS feed for Vikerraadio's "Õh
 
 ## Features
 
-- Fetches latest episodes from ERR's internal API
+- Fetches latest episodes from Vikerraadio API
 - Valid podcast RSS feed format (compatible with all podcast apps)
-- In-memory caching (1 hour)
+- In-memory LRU caching with configurable TTL
+- Concurrent fetching with retry logic and exponential backoff
 - iTunes podcast metadata
-- Zero production dependencies
 - Docker deployment via GHCR
 
-## API Endpoints Discovered
+## API Endpoints
 
-During development, I reverse-engineered ERR's internal API by analyzing:
-- The yt-dlp ERR extractor ([source](https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/err.py))
-- The Kodi Jupiter plugin ([source](https://github.com/yllar/plugin.video.jupiter.err.ee))
+**Base URL:** `https://vikerraadio.err.ee/api`
 
-### ERR API v2 Endpoints
-
-**Base URL:** `https://services.err.ee/api/v2`
-
-1. **Get Content Details**
+1. **Get Broadcasts List**
    ```
-   GET /vodContent/getContentPageData?contentId={contentid}
+   GET /broadcast/broadcasts?seriesContentId={id}
    ```
-   Returns detailed metadata and media URLs for a specific episode or series
+   Returns paginated list of episodes for a series
 
-2. **Get Series List**
+2. **Get Episode Details**
    ```
-   GET /series/getSeriesData?type={type}
+   GET /radio/getRadioPageData?contentId={id}
    ```
-   Returns all shows for a given type (`audio` or `video`)
+   Returns episode metadata including media URLs
 
 ## Requirements
 
@@ -104,32 +98,37 @@ http://your-server:8787/feed.xml
 ## How It Works
 
 1. **Server receives request** for `/feed.xml`
-2. **Checks cache** - if feed was generated in last hour, return cached version
-3. **Fetches episodes** from ERR API:
-   - Gets series data for Õhtujutt (content ID 1038081)
-   - Fetches detailed metadata for up to 50 recent episodes
+2. **Checks cache** - returns cached feed if still valid
+3. **Fetches episode list** from `/broadcast/broadcasts` endpoint
+4. **Fetches episode details** in parallel (up to 50 episodes, 5 concurrent)
+   - Retries failed requests with exponential backoff
    - Extracts audio URLs, titles, descriptions, images
-4. **Generates RSS** - creates valid podcast XML with iTunes tags
-5. **Caches response** - stores in memory for 1 hour
-6. **Returns feed** to podcast app
+5. **Generates RSS** - creates valid podcast XML with iTunes tags
+6. **Caches responses** - both episode list and individual episodes
+7. **Returns feed** to podcast app
 
 ## Technical Details
 
 - **Runtime:** Node.js 25+
 - **Language:** JavaScript (ES modules)
-- **Framework:** Native http module (zero dependencies)
-- **Caching:** In-memory (1 hour TTL)
+- **Framework:** Native http module
+- **Dependencies:** lru-cache, p-limit
+- **Caching:** In-memory LRU (1 hour TTL)
 - **Deployment:** Docker via GHCR
 
 ## Environment Variables
 
-| Variable                 | Default                          | Description                       |
-|--------------------------|----------------------------------|-----------------------------------|
-| `LISTEN_PORT`            | `8787`                           | HTTP server port                  |
-| `CACHE_DURATION_SECONDS` | `3600`                           | Feed cache duration in seconds    |
-| `ERR_API_URL`            | `https://services.err.ee/api/v2` | ERR API base URL                  |
-| `SERIES_CONTENT_ID`      | `1038081`                        | Content ID for the podcast series |
-| `NODE_ENV`               | -                                | Environment mode                  |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LISTEN_PORT` | `8787` | HTTP server port |
+| `VIKERRAADIO_API_URL` | `https://vikerraadio.err.ee/api` | Vikerraadio API base URL |
+| `SERIES_CONTENT_ID` | `1038081` | Content ID for the podcast series |
+| `CACHE_DURATION_SECONDS` | `3600` | Response cache TTL (60-86400) |
+| `MAX_CACHE_ENTRIES` | `200` | Maximum cached responses (10-1000) |
+| `MAX_CONCURRENT_REQUESTS` | `5` | Parallel API requests (1-20) |
+| `MAX_RETRIES` | `2` | Retry attempts for failed requests (0-5) |
+| `RETRY_DELAY_MS` | `500` | Initial retry delay, doubles each attempt (100-5000) |
+| `FETCH_TIMEOUT_SECONDS` | `10` | Request timeout (1-30) |
 
 ## Limitations & Notes
 
@@ -145,8 +144,6 @@ MIT License - Feel free to use and modify!
 ## Acknowledgments
 
 - **ERR (Eesti Rahvusringhääling)** for creating and broadcasting Õhtujutt
-- **yt-dlp team** for documenting ERR's API in their extractor
-- **yllar** for the Kodi Jupiter plugin that helped reverse engineer the API
 
 ## Links
 
