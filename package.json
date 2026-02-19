@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test test/*.test.js",
+    "generate": "node scripts/generate-feed.js",
     "fetch-mock": "node scripts/fetch-mock.js",
     "test-feed": "node scripts/test-feed.js"
   },
