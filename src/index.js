@@ -107,6 +107,9 @@ async function fetchEpisodes() {
       setCache(broadcastsCacheKey, broadcastsData);
     } catch (error) {
       console.error(`Failed to fetch broadcasts: ${error.message}`);
+      if (error.status) {
+        console.error(`Broadcasts request failed with HTTP ${error.status} — see details above`);
+      }
       return [];
     }
   }
@@ -141,12 +144,22 @@ async function fetchEpisodes() {
         return { id, data: contentData };
       } catch (error) {
         console.error(`Failed to fetch episode ${id}: ${error.message}`);
+        if (error.status) {
+          console.error(`Episode ${id} request failed with HTTP ${error.status} — see details above`);
+        }
         return { id, data: null };
       }
     })
   );
 
   // Build a map of freshly fetched episodes for quick lookup
+  const failedIds = fetchResults.filter(r => r.data === null).map(r => r.id);
+  if (failedIds.length > 0) {
+    console.error(
+      `Failed to fetch ${failedIds.length}/${uncachedIds.length} episodes: ${failedIds.join(', ')}`
+    );
+  }
+
   const fetchedMap = new Map(
     fetchResults
       .filter(r => r.data !== null)

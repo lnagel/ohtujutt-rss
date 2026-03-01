@@ -30,6 +30,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Log runner diagnostics
+        run: |
+          echo "=== Runner diagnostics ==="
+          echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Runner: $RUNNER_NAME ($RUNNER_OS/$RUNNER_ARCH)"
+          echo "Region: ${RUNNER_ENVIRONMENT:-unknown}"
+          echo "Resolving vikerraadio.err.ee..."
+          dig +short vikerraadio.err.ee || nslookup vikerraadio.err.ee || echo "(DNS lookup tools unavailable)"
+          echo "External IP:"
+          curl -sf --max-time 5 https://icanhazip.com || echo "(could not determine external IP)"
+          echo ""
+          echo "API connectivity check (HEAD request):"
+          curl -sf --max-time 10 -o /dev/null -w "  HTTP %{http_code} from %{remote_ip}:%{remote_port} in %{time_total}s\n  TLS: %{ssl_version}\n" -I "https://vikerraadio.err.ee/api/broadcast/broadcasts?seriesContentId=1038081" || echo "  Connectivity check failed (exit code $?)"
+          echo "==========================="
+
       - name: Generate feed
         run: npm run generate
 

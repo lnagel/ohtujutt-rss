@@ -50,10 +50,17 @@ describe('http-client', () => {
 
     it('should retry on 5xx errors', async () => {
       let callCount = 0;
+      const errorHeaders = new Map();
       globalThis.fetch = mock.fn(async () => {
         callCount++;
         if (callCount < 3) {
-          return { ok: false, status: 500, statusText: 'Internal Server Error' };
+          return {
+            ok: false,
+            status: 500,
+            statusText: 'Internal Server Error',
+            headers: { get: (name) => errorHeaders.get(name) || null },
+            text: async () => 'server error',
+          };
         }
         return { ok: true, status: 200 };
       });
@@ -64,10 +71,13 @@ describe('http-client', () => {
     });
 
     it('should not retry on 4xx errors (except 429)', async () => {
+      const errorHeaders = new Map([['server', 'nginx']]);
       globalThis.fetch = mock.fn(async () => ({
         ok: false,
         status: 404,
         statusText: 'Not Found',
+        headers: { get: (name) => errorHeaders.get(name) || null },
+        text: async () => 'not found',
       }));
 
       await assert.rejects(
@@ -77,12 +87,46 @@ describe('http-client', () => {
       assert.strictEqual(globalThis.fetch.mock.calls.length, 1);
     });
 
+    it('should attach response details to 4xx errors', async () => {
+      const errorHeaders = new Map([
+        ['server', 'cloudflare'],
+        ['cf-ray', '12345-IAD'],
+        ['content-type', 'text/html'],
+      ]);
+      globalThis.fetch = mock.fn(async () => ({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        headers: { get: (name) => errorHeaders.get(name) || null },
+        text: async () => '<html>Access Denied</html>',
+      }));
+
+      try {
+        await fetchWithRetry('https://example.com/api', 5000);
+        assert.fail('Expected an error to be thrown');
+      } catch (error) {
+        assert.strictEqual(error.status, 403);
+        assert.strictEqual(error.url, 'https://example.com/api');
+        assert.strictEqual(typeof error.elapsedMs, 'number');
+        assert.strictEqual(error.responseHeaders.server, 'cloudflare');
+        assert.strictEqual(error.responseHeaders['cf-ray'], '12345-IAD');
+        assert.ok(error.bodySnippet.includes('Access Denied'));
+      }
+    });
+
     it('should retry on 429 rate limit errors', async () => {
       let callCount = 0;
+      const errorHeaders = new Map([['retry-after', '1']]);
       globalThis.fetch = mock.fn(async () => {
         callCount++;
         if (callCount < 2) {
-          return { ok: false, status: 429, statusText: 'Too Many Requests' };
+          return {
+            ok: false,
+            status: 429,
+            statusText: 'Too Many Requests',
+            headers: { get: (name) => errorHeaders.get(name) || null },
+            text: async () => 'rate limited',
+          };
         }
         return { ok: true, status: 200 };
       });
@@ -93,10 +137,13 @@ describe('http-client', () => {
     });
 
     it('should throw after max retries exceeded', async () => {
+      const errorHeaders = new Map();
       globalThis.fetch = mock.fn(async () => ({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
+        headers: { get: (name) => errorHeaders.get(name) || null },
+        text: async () => 'server error',
       }));
 
       await assert.rejects(
