@@ -33,7 +33,7 @@ A simple Node.js server that generates a podcast RSS feed for Vikerraadio's "Õh
 
 ## Requirements
 
-- Node.js 25 or later
+- Node.js 20 or later
 - Docker (for containerized deployment)
 
 ## Local Development
@@ -109,7 +109,7 @@ http://your-server:8787/feed.xml
 
 ## Technical Details
 
-- **Runtime:** Node.js 25+
+- **Runtime:** Node.js 20+
 - **Language:** JavaScript (ES modules)
 - **Framework:** Native http module
 - **Dependencies:** lru-cache, p-limit
