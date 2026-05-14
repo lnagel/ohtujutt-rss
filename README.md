@@ -96,7 +96,7 @@ Add this feed URL to your favorite podcast app:
 http://your-server:8787/feed.xml
 ```
 
-**Tested with:**
+**Should work with:**
 - Apple Podcasts
 - Spotify
 - Pocket Casts
