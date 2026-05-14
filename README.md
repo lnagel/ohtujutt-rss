@@ -57,6 +57,14 @@ npm test
 
 Uses Node.js built-in test runner with mock data from `test/mocks/`.
 
+## Development Scripts
+
+```bash
+npm run test-feed                                          # fetch episodes against the live API and print a summary
+npm run fetch-mock -- broadcast/broadcasts seriesContentId=1038081   # refresh a mock under test/mocks/
+npm run generate                                           # write a static public/feed.xml
+```
+
 ## Docker Deployment
 
 ### Build and Run Locally
