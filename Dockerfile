@@ -1,4 +1,4 @@
-FROM node:25-slim
+FROM node:26-slim
 
 # Install dumb-init and ca-certificates for HTTPS
 RUN apt-get update && \
