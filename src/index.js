@@ -47,15 +47,26 @@ function setCachedFeed(data) {
   feedCache = { data, timestamp: Date.now() };
 }
 
-async function handleRequest(req, res) {
-  // Support reverse proxy headers (X-Forwarded-*), fall back to Host header or socket address
+/**
+ * Resolve the public base URL clients use to reach this service, from the
+ * X-Forwarded-* headers a reverse proxy sets.
+ * @param {import('node:http').IncomingMessage} req
+ * @returns {URL} Base URL with a trailing slash, e.g. https://example.com/abc123/
+ */
+function getPublicBaseUrl(req) {
   const host = req.headers['x-forwarded-host'] || req.headers.host || `${req.socket.localAddress}:${req.socket.localPort}`;
   const proto = req.headers['x-forwarded-proto'] || 'http';
-  const url = new URL(req.url, `${proto}://${host}`);
+  const prefix = String(req.headers['x-forwarded-prefix'] || '').replace(/^\/+|\/+$/g, '');
+  return new URL(prefix ? `/${prefix}/` : '/', `${proto}://${host}`);
+}
 
-  if (url.pathname === '/feed.xml' || url.pathname === '/') {
-    await handleFeedRequest(req, res, url);
-  } else if (url.pathname === '/health') {
+async function handleRequest(req, res) {
+  const baseUrl = getPublicBaseUrl(req);
+  const { pathname } = new URL(req.url, baseUrl);
+
+  if (pathname === '/feed.xml') {
+    await handleFeedRequest(req, res, baseUrl);
+  } else if (pathname === '/health') {
     res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': 'text/plain' });
     res.end('OK');
   } else {
@@ -64,7 +75,7 @@ async function handleRequest(req, res) {
   }
 }
 
-async function handleFeedRequest(req, res, url) {
+async function handleFeedRequest(req, res, baseUrl) {
   try {
     // Try to get from cache
     let rss = getCachedFeed();
@@ -72,7 +83,7 @@ async function handleFeedRequest(req, res, url) {
     if (!rss) {
       // Fetch fresh data
       const episodes = await fetchEpisodes();
-      const selfUrl = new URL('/feed.xml', url.origin);
+      const selfUrl = new URL('feed.xml', baseUrl);
       rss = generateRSS(episodes, selfUrl.toString());
 
       // Store in cache
