@@ -19,7 +19,7 @@ Podcast RSS feed for Vikerraadio's Õhtujutt
 
 ## Upstream URLs
 - Series page: https://vikerraadio.err.ee/ohtujutt_lastele
-- Broadcasts list: `https://vikerraadio.err.ee/api/broadcast/broadcasts?seriesContentId=1038081`
-- Episode data: `https://vikerraadio.err.ee/api/radio/getRadioPageData?contentId={id}`
+- Broadcasts list: `https://services.err.ee/api/broadcast/broadcasts?seriesContentId=1038081`
+- Episode data: `https://services.err.ee/api/radio/getRadioPageData?contentId={id}`
 
-ERR's API can change without notice. When the feed shows no new episodes, first verify upstream.
+ERR's API can change without notice (in 2026 vikerraadio.err.ee moved to eestiraadio.err.ee and the old `vikerraadio.err.ee/api` started redirecting to HTML; the same API paths live on `services.err.ee/api`). When the feed shows no new episodes, first verify upstream.

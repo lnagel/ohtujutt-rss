@@ -5,9 +5,9 @@
  * and serves them as a valid podcast RSS feed.
  *
  * API Endpoints:
- * - Broadcasts list: https://vikerraadio.err.ee/api/broadcast/broadcasts?seriesContentId=1038081
+ * - Broadcasts list: https://services.err.ee/api/broadcast/broadcasts?seriesContentId=1038081
  *   Returns paginated list of episodes with basic metadata
- * - Episode data: https://vikerraadio.err.ee/api/radio/getRadioPageData?contentId={episodeId}
+ * - Episode data: https://services.err.ee/api/radio/getRadioPageData?contentId={episodeId}
  *   Returns pageControlData.mainContent with media URLs, heading, scheduleStart, etc.
  */
 
@@ -15,7 +15,7 @@ import { createServer } from 'node:http';
 import { fetchWithRetry, getConfig as getHttpConfig } from './http-client.js';
 import { getCached, setCache, getCachedBatch, getCacheStats } from './response-cache.js';
 
-const VIKERRAADIO_API_URL = process.env.VIKERRAADIO_API_URL || 'https://vikerraadio.err.ee/api';
+const VIKERRAADIO_API_URL = process.env.VIKERRAADIO_API_URL || 'https://services.err.ee/api';
 const SERIES_CONTENT_ID = process.env.SERIES_CONTENT_ID || '1038081';
 
 // Request timeout for upstream API calls (default: 10s, min: 1s, max: 30s)
