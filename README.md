@@ -17,7 +17,7 @@ A simple Node.js server that generates a podcast RSS feed for Vikerraadio's "Õh
 
 ## API Endpoints
 
-**Base URL:** `https://vikerraadio.err.ee/api`
+**Base URL:** `https://services.err.ee/api`
 
 1. **Get Broadcasts List**
    ```
@@ -129,7 +129,7 @@ http://your-server:8787/feed.xml
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LISTEN_PORT` | `8787` | HTTP server port |
-| `VIKERRAADIO_API_URL` | `https://vikerraadio.err.ee/api` | Vikerraadio API base URL |
+| `VIKERRAADIO_API_URL` | `https://services.err.ee/api` | Vikerraadio API base URL |
 | `SERIES_CONTENT_ID` | `1038081` | Content ID for the podcast series |
 | `CACHE_DURATION_SECONDS` | `3600` | Response cache TTL (60-86400) |
 | `MAX_CACHE_ENTRIES` | `200` | Maximum cached responses (10-1000) |

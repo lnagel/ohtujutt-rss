@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const BASE_URL = process.env.API_BASE_URL || 'https://vikerraadio.err.ee/api';
+const BASE_URL = process.env.API_BASE_URL || 'https://services.err.ee/api';
 const MOCKS_DIR = path.join(__dirname, '..', 'test', 'mocks');
 
 const [,, method, ...paramArgs] = process.argv;
